@@ -34,7 +34,8 @@ player_career_stats <- read.csv("NBA_App/Data/players.csv")
 
 dirty_player_salaries <- read.csv("NBA_App/Data/salaries_1985to2018.csv")
 
-dirty_curry_stats <- read.csv("NBA_App/Data/curry_shooting.csv") %>% select(shot_made_flag, shot_type, shot_distance)
+dirty_curry_stats <- read.csv("NBA_App/Data/curry_shooting.csv") %>% 
+  select(shot_made_flag, shot_type, shot_distance)
 
 player_salaries <- player_career_stats %>% 
   left_join(dirty_player_salaries, by = c("X_id" = "player_id")) %>% 

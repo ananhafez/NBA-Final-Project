@@ -16,6 +16,25 @@ library(readr)
 
 nba_season_stats <- read.csv("Data/Seasons_stats_complete.csv") %>% filter(Year != "0")
 
+dirty_curry_stats <- read.csv("Data/curry_shooting.csv") %>% 
+    select(shot_made_flag, shot_type, shot_distance)
+
+curry_stats <- dirty_curry_stats %>% 
+    group_by(shot_distance) %>% 
+    count(shot_made_flag) %>% 
+    mutate(shot_made_flag = as.logical(shot_made_flag)) %>%
+    # mutate(shot_made_flag = if_else(TRUE, "made", "missed")) %>% 
+    pivot_wider(names_from = shot_made_flag, values_from = n) %>% 
+    mutate_all(~replace(., is.na(.), 0)) 
+
+colnames(curry_stats)<- c("shot_distance","made","missed")
+
+curry_stats_2<- curry_stats %>% 
+    mutate(total = made + missed) %>% 
+    mutate(fgp = made/total) %>% 
+    mutate(efficiency = if_else(shot_distance < 22, fgp * 2, fgp * 3)) %>% 
+    filter(shot_distance %in% c(5:30))
+
 plot_1 <- nba_season_stats %>% 
     group_by(Year) %>% 
     summarize(total_shots = sum(FGA), total_3p = sum(X3PA)) %>% 
@@ -45,6 +64,26 @@ plot_2 <- ggplot(points_over_time, aes(Year)) +
     labs(title = "Sources of NBA Points Over Time", 
          y = "Percentage of Total Points", x = "NBA Season") + 
     theme(legend.title = element_blank())
+
+plot_3 <- ggplot(curry_stats_2, aes(shot_distance, fgp)) +
+    geom_point() + geom_smooth(method = "lm", se = FALSE) +
+    ylim(0,1) + geom_vline(xintercept = 22, colour="#BB0000", alpha = 0.7) +
+    labs(title = "Steph Curry's Shot Accuracy by Distance",
+         x = "Shot Distance",
+         y = "Field Goal %",
+         caption = "Data from 2015-2016 Season courtesy of NBA.com",
+         subtitle = "Only Minor Drop-off after 3-Point Line (Red Line)")
+
+plot_4 <- ggplot(curry_stats_2, aes(shot_distance, efficiency)) +
+    geom_point() + geom_smooth(method = "lm", se = FALSE) + 
+    geom_vline(xintercept = 22, colour="#BB0000", alpha = 0.7) +
+    geom_hline(yintercept = 1.35, alpha = 0.7) +
+    ylim(0,2) +
+    labs(title = "Steph Curry's Shot Efficiency by Distance",
+         x = "Shot Distance",
+         y = "Average Points per Shot",
+         caption = "Data from 2015-2016 Season courtesy of NBA.com",
+         subtitle = "Curry's top 6 Efficiencies are behind 3-Point Line (Red Line)")
 
 year_options <- nba_season_stats %>% group_by(Year) %>% select(Year) %>% count() %>% select(Year)
 
@@ -139,10 +178,10 @@ ui <- fluidPage(
         
         tabPanel(
             title = "Why so many 3's?",
-            h3("Accuracy Comes First"),
             p(
                 "The three-point shot first became popularized by the American Basketball Association (ABA), introduced in its inaugural 1967–68 season. ABA commissioner George Mikan stated the three-pointer 'would give the smaller player a chance to score and open up the defense to make the game more enjoyable for the fans'. During the 1970s, the ABA used the three-point shot, along with the slam dunk, as a marketing tool to compete with the NBA."
             ),
+            h3("Accuracy Comes First"),
             br(),
             br(),
             br(),
