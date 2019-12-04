@@ -90,6 +90,16 @@ ui <- fluidPage(
         ),
         
         tabPanel(
+            title = "Three Pointer?",
+            h3("What's a Three Point Shot?"),
+            p(
+                "A three-point field goal ('3-pointer') is a field goal in a basketball game made from beyond the three-point line, a designated arc surrounding the basket. A successful attempt is worth three points, in contrast to the two points awarded for field goals made within the three-point line and the one point for each made free throw."
+            ), 
+            br(),
+            imageOutput("court")
+        ),
+        
+        tabPanel(
             title = "Growth of 3's",
             h3("More Shots from Distance"),
             p(
@@ -101,11 +111,12 @@ ui <- fluidPage(
             
             sidebarPanel(
                 p("Select a season to see the breakdown of point sources for each NBA season."),
-                selectInput(
+                sliderInput(
                     inputId = "year",
                     label = "Season:",
-                    choices = year_options,
-                    selected = "2019"
+                    min = 1950,
+                    max = 2019,
+                    value = 1950
                 ),
                 br(),
                 
@@ -124,11 +135,36 @@ ui <- fluidPage(
                 "Prior to 1980, three pointers represented 0% of the scoring in the league as it was not yet introduced. After 1980, the three-point line took on an increasingly important role with a road bump in the mid-90s. In 2008, three pointers officially surpassed free throws as the second most important scoring method in the league; and it does not look like its prevalence is declining any time soon. In fact, if the trend persists, by 2030, three points will be the most common increment in a basketball game."
             ),
             plotOutput("overallPlot")
-        )
+        ),
         
+        tabPanel(
+            title = "Why so many 3's?",
+            h3("Accuracy Comes First"),
+            p(
+                "The three-point shot first became popularized by the American Basketball Association (ABA), introduced in its inaugural 1967–68 season. ABA commissioner George Mikan stated the three-pointer 'would give the smaller player a chance to score and open up the defense to make the game more enjoyable for the fans'. During the 1970s, the ABA used the three-point shot, along with the slam dunk, as a marketing tool to compete with the NBA."
+            ),
+            br(),
+            br(),
+            br(),
+            sidebarPanel( p(
+               "3-pointers were not such a prevelant force in the game of basketball until players actually got good at it. One of the most prolific players in the NBA today, Stephen Curry, shoots 3-pointers with remarkable accuracy. Let's take a look back at his 2015-2016 season where he set the record for the most threes made in a season, 402. While the league averaged 36% from the three that season, Curry was getting 54% right behind the three point line at 22 feet. By being accurate from distance, almost as accurate from close range, Curry showcased a new, efficient form of game strategy." 
+            ) ),
+            mainPanel( 
+                plotOutput("plot3") 
+                ),
+            br(),
+            br(),
+            br(),
+            h3("Accurate Players are Extremely Efficient from Range"),
+            sidebarPanel( p(
+                "To show efficiency, we multiply a player's field goal percentage by the type of shot it is using distance, 2-pointer or 3-pointer. When you have a player as accurate as Steph Curry, shooting behind the three point line becomes efficient, much more then 2-pointers. Curry's top 6 points per shot distance come form behind 3-point line. In fact, Curry scores more per shot on average 30 feet from the basket than 10 feet. To someone unfamiliar with basketball, this might not make sense. Steph Curry makes shots 10 feet away 67% of the time and 30 feet away only 45% of the time. The difference is that one of these shots is worth 2 points and one is worth 3. The extra point makes up for the loss in accuracy. After all, points are the ultimate currency in the NBA." 
+            ) ),
+            mainPanel( 
+                plotOutput("plot4") 
+            )
     )
     
-)
+))
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
@@ -156,6 +192,22 @@ server <- function(input, output) {
     
     output$overallPlot <- renderPlot({
         plot_2
+    })
+    
+    output$court <- renderImage({
+        list(src = "court.jpg",
+             contentType = 'image/jpg',
+             width = 800
+             # alt = "This is alternate text"
+        )
+    }, deleteFile = FALSE)
+    
+    output$plot3 <- renderPlot({
+        plot_3
+    })
+    
+    output$plot4 <- renderPlot({
+        plot_4
     })
     
 }

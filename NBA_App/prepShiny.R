@@ -21,7 +21,6 @@ library(TeachBayes)
 library(sf)
 library(dplyr)
 library(httr)
-library(jsonlite)
 library(transformr)
 library(ggridges)
 library(cowplot)
@@ -35,10 +34,28 @@ player_career_stats <- read.csv("NBA_App/Data/players.csv")
 
 dirty_player_salaries <- read.csv("NBA_App/Data/salaries_1985to2018.csv")
 
+dirty_curry_stats <- read.csv("NBA_App/Data/curry_shooting.csv") %>% select(shot_made_flag, shot_type, shot_distance)
+
 player_salaries <- player_career_stats %>% 
   left_join(dirty_player_salaries, by = c("X_id" = "player_id")) %>% 
   select(name, season_start, salary, team) %>% 
   filter(season_start != "NA")
+
+curry_stats <- dirty_curry_stats %>% 
+  group_by(shot_distance) %>% 
+  count(shot_made_flag) %>% 
+  mutate(shot_made_flag = as.logical(shot_made_flag)) %>%
+  # mutate(shot_made_flag = if_else(TRUE, "made", "missed")) %>% 
+  pivot_wider(names_from = shot_made_flag, values_from = n) %>% 
+  mutate_all(~replace(., is.na(.), 0)) 
+
+colnames(curry_stats)<- c("shot_distance","made","missed")
+
+curry_stats_2<- curry_stats %>% 
+  mutate(total = made + missed) %>% 
+  mutate(fgp = made/total) %>% 
+  mutate(efficiency = if_else(shot_distance < 22, fgp * 2, fgp * 3)) %>% 
+  filter(shot_distance %in% c(5:30))
 
 plot_1 <- nba_season_stats %>% 
   group_by(Year) %>% 
@@ -68,6 +85,26 @@ plot_2 <- ggplot(points_over_time, aes(Year)) +
   xlim(1950, 2020) + 
   labs(title = "Sources of NBA Points Over Time", 
        y = "Percentage of Total Points", x = "NBA Season") + 
-  theme(legend.title = element_blank())
+  theme(legend.title = element_blank()) 
+
+plot_3 <- ggplot(curry_stats_2, aes(shot_distance, fgp)) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE) +
+  ylim(0,1) + geom_vline(xintercept = 22, colour="#BB0000", alpha = 0.7) +
+  labs(title = "Steph Curry's Shot Accuracy by Distance",
+                   x = "Shot Distance",
+                   y = "Field Goal %",
+                   caption = "Data from 2015-2016 Season courtesy of NBA.com",
+                   subtitle = "Only Minor Drop-off after 3-Point Line (Red Line)")
+
+plot_4 <- ggplot(curry_stats_2, aes(shot_distance, efficiency)) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE) + 
+  geom_vline(xintercept = 22, colour="#BB0000", alpha = 0.7) +
+  geom_hline(yintercept = 1.35, alpha = 0.7) +
+  ylim(0,2) +
+  labs(title = "Steph Curry's Shot Efficiency by Distance",
+       x = "Shot Distance",
+       y = "Average Points per Shot",
+       caption = "Data from 2015-2016 Season courtesy of NBA.com",
+       subtitle = "Curry's top 6 Efficiencies are behind 3-Point Line (Red Line)")
 
 year_options <- nba_season_stats %>% group_by(Year) %>% select(Year) %>% count() %>% select(Year)
