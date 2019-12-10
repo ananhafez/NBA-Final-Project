@@ -9,15 +9,12 @@
 
 library(shiny)
 library(janitor)
+library(ggrepel)
 library(ggplot2)
 library(purrr)
 library(tidyverse)
 library(readr)
-
-nba_season_stats <- read.csv("Data/Seasons_stats_complete.csv") %>% filter(Year != "0")
-
-dirty_curry_stats <- read.csv("Data/curry_shooting.csv") %>% 
-    select(shot_made_flag, shot_type, shot_distance)
+library(gganimate)
 
 curry_stats <- dirty_curry_stats %>% 
     group_by(shot_distance) %>% 
@@ -55,9 +52,9 @@ points_over_time <- nba_season_stats %>%
               prop_ft = total_ft/total_points) 
 
 plot_2 <- ggplot(points_over_time, aes(Year)) + 
-    geom_line(aes(y = prop_2points, color = "var0")) + 
-    geom_line(aes(y = prop_3points, colour = "var1")) + 
-    geom_line(aes(y = prop_ft, colour = "var2")) + 
+    geom_line(aes(y = prop_2points, color = "var0"), size = 1.2) + 
+    geom_line(aes(y = prop_3points, colour = "var1"), size = 1.2) + 
+    geom_line(aes(y = prop_ft, colour = "var2"), size = 1.2) + 
     ylim(0,1) + 
     scale_colour_manual(labels = c("2-Pointers", "3-Pointers", "Free Throws"), values = c("red", "green", "blue")) + 
     xlim(1950, 2020) + 
@@ -85,7 +82,7 @@ plot_4 <- ggplot(curry_stats_2, aes(shot_distance, efficiency)) +
          caption = "Data from 2015-2016 Season courtesy of NBA.com",
          subtitle = "Curry's top 6 Efficiencies are behind 3-Point Line (Red Line)")
 
-year_options <- nba_season_stats %>% group_by(Year) %>% select(Year) %>% count() %>% select(Year)
+year_options <- nba_season_stats %>% filter(Year >= 1980) %>% group_by(Year) %>% select(Year) %>% count() %>% select(Year)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -97,9 +94,10 @@ ui <- fluidPage(
             h5("By Anan Hafez"),
             h3("About:"),
             p(
-                "I've loved the game of basketball since I was a young kid. Growing up in Los Angeles, I loved going to Lakers games with my dad, watching them win two championships in a row, and buying as many Kobe Bryant jerseys as my parents would let me. I even played in a YMCA basketball league and my team won the championship! (Would you believe that?) Over the years though, I've seen a massive shift the way basketball is played. Every kid now wants to be like Steph Curry, shooting from super far away and repeatedly making it. In recent years, teams are allegedly taking many more 3-point shots than when I was a kid and point totals are rising becuase of it. Games that used end with with 80 or 90 points now regularly end with over 100, 110, and sometimes 120 points. In fact, there have already been a few games in the most recent season that have ended with 150+ points! I wanted to test this theory with R. Are players really taking more 3-point shots than ever before, and how does that affect other parts of professional basketball? The three-point shot, as many fans know, was not always in the game. When Wilt and Russell used to play, each field goal counted as two points and free throw one. In the 1979-1980 season, the NBA adopted the three-point line, further from which, a shot would count as 3 points. This change, undeniably, has changed the game to head to toe. Hopefully, with many visualizations and (finally) clean code, I can see how and why professional basketball has changed in the past few decades. "
-            )
-            # br(),
+                "I've loved the game of basketball since I was a young kid. Growing up in Los Angeles, I loved going to Lakers games with my dad, watching them win two championships in a row, and buying as many Kobe Bryant jerseys as my parents would let me. I even played in a YMCA basketball league and my team won the championship! (Would you believe that?) Over the years though, I've seen a massive shift the way basketball is played. Every kid now wants to be like Steph Curry, shooting from super far away and repeatedly making it. In recent years, teams are allegedly taking many more 3-point shots than when I was a kid and point totals are rising becuase of it. Games that used end with with 80 or 90 points now regularly end with over 100, 110, and sometimes 120 points. In fact, there have already been a few games in the most recent season that have ended with 150+ points! I wanted to test this theory with R. Are players really taking more 3-point shots than ever before, and how does that affect other parts of professional basketball? The three-point shot, as many fans know, was not always in the game. When Wilt and Russell used to play, each field goal counted as two points and free throw one. In the 1979-1980 season, the NBA adopted the three-point line, further from which, a shot would count as 3 points. This change, undeniably, has changed the game to head to toe. Hopefully, with many visualizations and (finally) clean code, I can see how and why professional basketball has changed in the past few decades. Check out the video below to see some the excitement I'm talking about!"
+            ),
+            br(),
+            HTML('<iframe width="560" height="315" src="https://www.youtube.com/embed/zPis_kF7Lgo" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>')
             # h3("Organization of the App:"),
             # p(
             #     "Why Texas:? On this page I show why Texas is one of, if not the, most important states when discussing the death penalty."
@@ -131,11 +129,12 @@ ui <- fluidPage(
         tabPanel(
             title = "Three Pointer?",
             h3("What's a Three Point Shot?"),
+            sidebarPanel(
             p(
                 "A three-point field goal ('3-pointer') is a field goal in a basketball game made from beyond the three-point line, a designated arc surrounding the basket. A successful attempt is worth three points, in contrast to the two points awarded for field goals made within the three-point line and the one point for each made free throw."
-            ), 
+            )), 
             br(),
-            imageOutput("court")
+            mainPanel(imageOutput("court"))
         ),
         
         tabPanel(
@@ -178,13 +177,11 @@ ui <- fluidPage(
         
         tabPanel(
             title = "Why so many 3's?",
+            h4("Some Backstory..."),
             p(
                 "The three-point shot first became popularized by the American Basketball Association (ABA), introduced in its inaugural 1967–68 season. ABA commissioner George Mikan stated the three-pointer 'would give the smaller player a chance to score and open up the defense to make the game more enjoyable for the fans'. During the 1970s, the ABA used the three-point shot, along with the slam dunk, as a marketing tool to compete with the NBA."
             ),
             h3("Accuracy Comes First"),
-            br(),
-            br(),
-            br(),
             sidebarPanel( p(
                "3-pointers were not such a prevelant force in the game of basketball until players actually got good at it. One of the most prolific players in the NBA today, Stephen Curry, shoots 3-pointers with remarkable accuracy. Let's take a look back at his 2015-2016 season where he set the record for the most threes made in a season, 402. While the league averaged 36% from the three that season, Curry was getting 54% right behind the three point line at 22 feet. By being accurate from distance, almost as accurate from close range, Curry showcased a new, efficient form of game strategy." 
             ) ),
@@ -201,7 +198,39 @@ ui <- fluidPage(
             mainPanel( 
                 plotOutput("plot4") 
             )
-    )
+            ),
+        tabPanel(
+            title = "Team Usage",
+            h3("Are more accurate teams taking more 3-pointers?"),
+            sidebarPanel(
+                p("Select a season"),
+                selectInput(
+                    inputId = "year2",
+                    label = "Season:",
+                    choices = year_options,
+                    selected = "1980"
+                ),
+                p("Note: NBA adopted Three Point Shot in 1980 Season")
+            ),
+            br(),
+            mainPanel(plotOutput("plot5")),
+            br(),
+            br(),
+            br(),
+            br(),
+            br(),
+            p(
+                "This section of my project examines the skill against the usage of 3-pointers by a team in a given season. The x-axis represents the number of threes attempted while the y-axis represents the proportion of those made in a season. A team, realistically, hopes to find itself in the top-right corner of the graph, which represents a high skill of shooting threes and fully utilizing the skill. The top-left corner represents a high accuracy (aka high skills) but the team has under-utilized the skill. The bottom-left corner represents the team's awareness of its low three-pointer accuracy and its decision not to shoot threes. The bottom-right corner is the worst case scenario, representing a team that is very bad at shooting threes, but somehow decides to heavily rely on it. Also, notice how the x-axis limits shift over the years. This helps illustrate how large threes have become even if some teams don't believe in them."
+            ),
+            br(),
+            p(
+                "The graphic begins with 1980, the first year NBA teams could shoot threes in a game. That year was led by the San Diego Clippers, with 543 attempts over the course of the season. Compare that to the most recent season in 2019 where the Houston Rockets, led by the analytics of Daryl Morey of MIT, shot a record 3721 threes! As shown before, Morey understands that if players can shoot with enough accuracy they can always outscore an opposing team. The Rockets have built their entire team and playstyle around this strategy. Despite being one the worst defensive teams in the league, the Rockets have consistenly maintained winning records and playoff runs because this strategy actually works. If the Rockets as a team were slightly more accurate, perhaps closer to 38% or 39% from three, they would likely end up NBA champions. All because of threes!"
+            ),
+            br(),
+            fluidRow( align = "center",
+                imageOutput("plot6")
+                      )
+        )
     
 ))
 
@@ -249,6 +278,31 @@ server <- function(input, output) {
         plot_4
     })
     
+    output$plot5 <- renderPlot({
+        nba_season_stats %>% 
+            filter(Year == input$year2) %>% 
+            group_by(Tm, Year) %>% 
+            summarise(percent_3p = sum(X3P)/sum(X3PA), total_3p = sum(X3PA)) %>% 
+            ggplot(aes(x = total_3p, y = percent_3p, color = Tm)) + 
+            geom_point() +
+            geom_label_repel(aes(label = Tm),
+                             box.padding   = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50') +
+            ylim(0, 0.5) +
+            labs(y = "Three Point %",
+                 x = "Three Pointers Attempted over Season",
+                 title = "Skills vs. Usage") +
+            theme(legend.position='none')
+    })
+    
+    output$plot6 <- renderImage({
+        list(src = "plot6.gif",
+             contentType = 'image/gif',
+             width = 600
+             # alt = "This is alternate text"
+        )
+    }, deleteFile = FALSE)
 }
 
 # Run the application 

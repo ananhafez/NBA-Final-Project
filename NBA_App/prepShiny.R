@@ -28,14 +28,17 @@ library(broom)
 library(rstanarm)
 library(tidyverse)
 
-nba_season_stats <- read.csv("NBA_App/Data/Seasons_stats_complete.csv") %>% filter(Year != "0")
+nba_season_stats <- read.csv("NBA_App/Data/Seasons_stats_complete.csv") %>% 
+  filter(Year != "0") %>% 
+  filter(Tm != "TOT")
+
+dirty_curry_stats <- read.csv("NBA_App/Data/curry_shooting.csv") %>% 
+  select(shot_made_flag, shot_type, shot_distance)
 
 player_career_stats <- read.csv("NBA_App/Data/players.csv")
 
 dirty_player_salaries <- read.csv("NBA_App/Data/salaries_1985to2018.csv")
 
-dirty_curry_stats <- read.csv("NBA_App/Data/curry_shooting.csv") %>% 
-  select(shot_made_flag, shot_type, shot_distance)
 
 player_salaries <- player_career_stats %>% 
   left_join(dirty_player_salaries, by = c("X_id" = "player_id")) %>% 
@@ -108,4 +111,34 @@ plot_4 <- ggplot(curry_stats_2, aes(shot_distance, efficiency)) +
        caption = "Data from 2015-2016 Season courtesy of NBA.com",
        subtitle = "Curry's top 6 Efficiencies are behind 3-Point Line (Red Line)")
 
+#skillusage <- nba_season_stats %>% 
+#  group_by(Year, Tm) %>% 
+#  summarise(percent_3p = sum(X3P)/sum(X3PA), total_3p = sum(X3PA)) %>% 
+#  filter(Year == 2019)
+#  ggplot(aes(x = total_3p, y = percent_3p)) + 
+#  geom_point() + geom_smooth(method = "glm", se = FALSE)
+
 year_options <- nba_season_stats %>% group_by(Year) %>% select(Year) %>% count() %>% select(Year)
+
+p <- nba_season_stats %>% 
+  filter(Year >= 1980) %>%
+  group_by(Tm, Year) %>% 
+  summarise(percent_3p = sum(X3P)/sum(X3PA), total_3p = sum(X3PA)) %>% 
+  ggplot(aes(x = total_3p, y = percent_3p, color = Tm)) + 
+  geom_point() +
+  geom_label_repel(aes(label = Tm),
+                   box.padding   = 0.35, 
+                   point.padding = 0.5,
+                   segment.color = 'grey50') +
+  transition_time(Year) +
+  ylim(0, 0.5) +
+  xlim(0, 3750) +
+  labs(y = "Three Point %",
+       x = "Three Pointers Attempted over Season",
+       title = "Skills vs. Usage",
+       subtitle = "Season: {frame_time}") +
+  theme(legend.position='none') 
+
+p2 <- animate(p, nframes = 40, fps = 2)
+
+anim_save(filename = "NBA_App/plot6.gif", p2)
