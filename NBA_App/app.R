@@ -15,6 +15,24 @@ library(purrr)
 library(tidyverse)
 library(readr)
 library(gganimate)
+library(gifski)
+library(png)
+
+nba_season_stats <- read.csv("Data/Seasons_stats_complete.csv") %>% 
+    filter(Year != "0") %>% 
+    filter(Tm != "TOT")
+
+dirty_curry_stats <- read.csv("Data/curry_shooting.csv") %>% 
+    select(shot_made_flag, shot_type, shot_distance)
+
+player_career_stats <- read.csv("Data/players.csv")
+
+dirty_player_salaries <- read.csv("Data/salaries_1985to2018.csv")
+
+player_salaries <- player_career_stats %>% 
+    left_join(dirty_player_salaries, by = c("X_id" = "player_id")) %>% 
+    select(name, season_start, salary, team) %>% 
+    filter(season_start != "NA")
 
 curry_stats <- dirty_curry_stats %>% 
     group_by(shot_distance) %>% 
@@ -86,6 +104,29 @@ year_options <- nba_season_stats %>% filter(Year >= 1980) %>% group_by(Year) %>%
 
 year_options2 <- nba_season_stats %>% filter(Year >= 1990, Year <= 2017) %>% group_by(Year) %>% select(Year) %>% count() %>% select(Year)
 
+p <- nba_season_stats %>% 
+    filter(Year >= 1980) %>%
+    group_by(Tm, Year) %>% 
+    summarise(percent_3p = sum(X3P)/sum(X3PA), total_3p = sum(X3PA)) %>% 
+    ggplot(aes(x = total_3p, y = percent_3p, color = Tm)) + 
+    geom_point() +
+    geom_label_repel(aes(label = Tm),
+                     box.padding   = 0.35, 
+                     point.padding = 0.5,
+                     segment.color = 'grey50') +
+    transition_time(Year) +
+    ylim(0, 0.5) +
+    xlim(0, 3750) +
+    labs(y = "Three Point %",
+         x = "Three Pointers Attempted over Season",
+         title = "Skills vs. Usage",
+         subtitle = "Season: {frame_time}") +
+    theme(legend.position='none') 
+
+p2 <- animate(p, nframes = 40, fps = 2)
+
+anim_save(filename = "plot6.gif", p2)
+
 stats_and_salaries <- nba_season_stats %>% 
     full_join(player_salaries, by = c("Player" = "name", "Year" = "season_start")) 
 
@@ -117,31 +158,6 @@ ui <- fluidPage(
             ),
             br(),
             HTML('<iframe width="1120" height="630" src="https://www.youtube.com/embed/zPis_kF7Lgo" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>')
-            # p(
-            #     "Why Texas:? On this page I show why Texas is one of, if not the, most important states when discussing the death penalty."
-            # ),
-            # p(
-            #     "Most Common Words: On this page, you can see specific visualizations of the breakdown of sentiments in all Last Statements by selecting which sentiment to include in a pie chart. There is also a word cloud that shows the most commonly used words based on the sentiments selected."
-            # ),
-            # p(
-            #     "Time Plot: This graph plots the percentage of positive or negative words. Users can look at all subjects or subset based on race and/or age."
-            # ),
-            # p(
-            #     "Specific Inmates: This tab allows users see a random set of subjects and their last statements."
-            # ),
-            # br(),
-            # h3("Some Findings:"),
-            # p(
-            #     "As shown on the 'Why Texas?' tab, I found that Texas conducted nearly half of the death row executions nationwide in 2018. Though executions have decreased since 1999, Texas has maintained a large margin of the total executions and now, as stated, conducted the majority of them. Additionally, though 31 states have not outlawed the death penalty, less than 10 actually conducted any executions thsi year. This reaffirms some of the statements made in the Medium articles that discuss death penalty being more of a de factor life sentence in most states.   Sentiment Analysis begins on the Most Common Words tab which shows that a majority of the words in Last Statements are connote positivity and/or trust. The word cloud below shows that one of the most common words in Last Statements by the subjects was the word good with 55 entries.  The time plot is inconclusive. However, it does show that the percentage of positive words used has increased at a higher rate than the percentage of negative words used. "
-            # ),
-            # p(
-            #     "Poke around with the data and see if you can find more interesting insights."
-            # ),
-            # br(),
-            # h2("Relevant Reading Materials and Sources:"),
-            # p(
-            #     "https://medium.com/bigger-picture/kill-the-death-penalty-ea38c8929e30, https://medium.com/s/story/love-is-the-most-common-word-in-death-row-last-statements-f15ab0e8ad16, https://deathpenaltyinfo.org/views-executions, http://www.tdcj.state.tx.us/death_row/dr_executed_offenders.html"
-            # )
         ),
         
         tabPanel(
