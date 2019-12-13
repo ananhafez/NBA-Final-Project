@@ -84,6 +84,25 @@ plot_4 <- ggplot(curry_stats_2, aes(shot_distance, efficiency)) +
 
 year_options <- nba_season_stats %>% filter(Year >= 1980) %>% group_by(Year) %>% select(Year) %>% count() %>% select(Year)
 
+year_options2 <- nba_season_stats %>% filter(Year >= 1990, Year <= 2017) %>% group_by(Year) %>% select(Year) %>% count() %>% select(Year)
+
+stats_and_salaries <- nba_season_stats %>% 
+    full_join(player_salaries, by = c("Player" = "name", "Year" = "season_start")) 
+
+salary_reg <- stats_and_salaries %>% 
+    filter(salary != "NA") %>% 
+    filter(Year >= 1990) %>% 
+    filter(Pos != "C") 
+
+plot_8 <- salary_reg %>% 
+    ggplot(aes(x = X3P, y = salary)) + 
+    geom_point() + 
+    geom_smooth(method = "lm", se = FALSE) + 
+    labs(title = "Comparing Players' 3PM and Salary per Season",
+         x = "Three Pointers Made",
+         y = "Salary",
+         subtitle = "From 1990 to 2017")
+
 # Define UI for application that draws a histogram
 ui <- fluidPage(
     
@@ -91,14 +110,13 @@ ui <- fluidPage(
         "Analysis of 3-pointers in the NBA",
         tabPanel(
             title = "Introduction",
-            h5("By Anan Hafez"),
-            h3("About:"),
+            h4("By Anan Hafez"),
+            h3("Why Basketball?"),
             p(
                 "I've loved the game of basketball since I was a young kid. Growing up in Los Angeles, I loved going to Lakers games with my dad, watching them win two championships in a row, and buying as many Kobe Bryant jerseys as my parents would let me. I even played in a YMCA basketball league and my team won the championship! (Would you believe that?) Over the years though, I've seen a massive shift the way basketball is played. Every kid now wants to be like Steph Curry, shooting from super far away and repeatedly making it. In recent years, teams are allegedly taking many more 3-point shots than when I was a kid and point totals are rising becuase of it. Games that used end with with 80 or 90 points now regularly end with over 100, 110, and sometimes 120 points. In fact, there have already been a few games in the most recent season that have ended with 150+ points! I wanted to test this theory with R. Are players really taking more 3-point shots than ever before, and how does that affect other parts of professional basketball? The three-point shot, as many fans know, was not always in the game. When Wilt and Russell used to play, each field goal counted as two points and free throw one. In the 1979-1980 season, the NBA adopted the three-point line, further from which, a shot would count as 3 points. This change, undeniably, has changed the game to head to toe. Hopefully, with many visualizations and (finally) clean code, I can see how and why professional basketball has changed in the past few decades. Check out the video below to see some the excitement I'm talking about!"
             ),
             br(),
-            HTML('<iframe width="560" height="315" src="https://www.youtube.com/embed/zPis_kF7Lgo" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>')
-            # h3("Organization of the App:"),
+            HTML('<iframe width="1120" height="630" src="https://www.youtube.com/embed/zPis_kF7Lgo" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>')
             # p(
             #     "Why Texas:? On this page I show why Texas is one of, if not the, most important states when discussing the death penalty."
             # ),
@@ -156,7 +174,7 @@ ui <- fluidPage(
                     max = 2019,
                     value = 1950
                 ),
-                br(),
+                br()
                 
             ),
             br(),
@@ -230,6 +248,49 @@ ui <- fluidPage(
             fluidRow( align = "center",
                 imageOutput("plot6")
                       )
+        ),
+        tabPanel(
+            title = "Effect on Salaries",
+            h3("Are better 3-point shooters making more money?"),
+            sidebarPanel(
+                p("Select a season"),
+                selectInput(
+                    inputId = "year3",
+                    label = "Season:",
+                    choices = year_options2,
+                    selected = "1990"
+                ),
+                checkboxInput(
+                    inputId = "table",
+                    label = "Show Coefficient Table",
+                    value = FALSE
+                )),
+            br(),
+            mainPanel(plotOutput("plot7"),
+                      br(),
+                      tableOutput("gttable")),
+            br(),
+            p(
+             "Looking at our graphic, it seems that there is an effect on how many 3-pointers a player makes and their salary for that season. However, as we examine more recent years this effect gets more pronounced. Clicking our coefficient table, we see two terms: Intercept and X3P. The Intercept coefficient is the average starting salary for a player who hasn't made any 3-pointers. The X3P coefficient is the average jump in salary for every 3-pointer a player makes over the course of the season. Notice how in the 1990 season, everytime a player made a 3-pointer, they got an extra $4,400 on average. By the 2017 season, every 3-pointer you made got you an extra $77,600. In the NBA today, it pays to be a great shooter."   
+            ),
+            h3("In Aggregate:"),
+            fluidRow( align = "center",
+                      plotOutput("plot8")
+            ),
+            tableOutput("gttable2")
+        ),
+        tabPanel(
+            title = "Wrap-Up & Contact",
+            h3("Video Summary:"),
+            br(),
+            HTML('<iframe width="1120" height="630" src="https://www.youtube.com/embed/1C2-iIYLBmY" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>'),
+            br(),
+            h3("Contact:"),
+            p("Anan Hafez"),
+            p("Harvard College Class of 2022"),
+            p("Project for Gov 1005 by David Kane"),
+            p("Email: ananhafez@college.harvard.edu"),
+            p("GitHub: ananhafez")
         )
     
 ))
@@ -303,7 +364,51 @@ server <- function(input, output) {
              # alt = "This is alternate text"
         )
     }, deleteFile = FALSE)
+    
+    output$plot7 <- renderPlot({
+       
+        salary_reg %>% filter(Year == input$year3) %>% 
+            ggplot(aes(x = X3P, y = salary)) + 
+            geom_point() + 
+            geom_smooth(method = "lm", se = FALSE) +
+            labs(title = "Comparing Players' 3PM and Salary per Season",
+                 x = "Three Pointers Made",
+                 y = "Salary")
+    })
+    
+    output$gttable <- renderTable({
+        if (input$table == TRUE) {
+            salary_fit <- salary_reg %>% filter(Year == input$year3) %>% lm(formula = salary ~ X3P)
+            
+            salary_fit %>%
+                tidy(conf.int = TRUE, conf.level = 0.90) %>%
+                mutate_if(is.numeric, round, digits = 2) %>%
+                clean_names() %>% 
+                select(-std_error, -statistic, -p_value) %>% 
+                rename("5th Percentile" = conf_low,
+                       "95th Percentile" = conf_high,
+                       "Coefficient" = estimate,
+                       "Term" = term) %>% 
+                gt()
+            }
+        })
+   
+     output$plot8 <- renderPlot({
+        plot_8
+    })
+    
+     output$gttable2 <- renderTable({
+         salary_fit %>%
+             tidy(conf.int = TRUE, conf.level = 0.90) %>%
+             mutate_if(is.numeric, round, digits = 2) %>%
+             clean_names() %>% 
+             select(-std_error, -statistic, -p_value) %>% 
+             rename("5th Percentile" = conf_low,
+                    "95th Percentile" = conf_high,
+                    "Coefficient" = estimate,
+                    "Term" = term) %>% 
+             gt()
+     })
 }
-
 # Run the application 
 shinyApp(ui = ui, server = server)

@@ -142,3 +142,5 @@ p <- nba_season_stats %>%
 p2 <- animate(p, nframes = 40, fps = 2)
 
 anim_save(filename = "NBA_App/plot6.gif", p2)
+
+
