@@ -204,7 +204,7 @@ ui <- fluidPage(
             br(),
             h4("The Past 70 Years of NBA Scoring:"),
             p(
-                "Prior to 1980, three pointers represented 0% of the scoring in the league as it was not yet introduced. After 1980, the three-point line took on an increasingly important role with a road bump in the mid-90s. In 2008, three pointers officially surpassed free throws as the second most important scoring method in the league; and it does not look like its prevalence is declining any time soon. In fact, if the trend persists, by 2030, three points will be the most common increment in a basketball game."
+                "Prior to 1980, 3-pointers represented 0% of the scoring in the league as it was not yet introduced. After 1980, the three-point line took on an increasingly important role with a road bump in the mid-90s. In 2008, 3-pointers officially surpassed free throws as the second most important scoring method in the league; and it does not look like its prevalence is declining any time soon. In fact, if the trend persists, by 2030, 3-pointers will be the most common increment in a basketball game."
             ),
             plotOutput("overallPlot")
         ),
@@ -227,7 +227,7 @@ ui <- fluidPage(
             br(),
             h3("Accurate Players are Extremely Efficient from Range"),
             sidebarPanel( p(
-                "To show efficiency, we multiply a player's field goal percentage by the type of shot it is using distance, 2-pointer or 3-pointer. When you have a player as accurate as Steph Curry, shooting behind the three point line becomes efficient, much more then 2-pointers. Curry's top 6 points per shot distance come form behind 3-point line. In fact, Curry scores more per shot on average 30 feet from the basket than 10 feet. To someone unfamiliar with basketball, this might not make sense. Steph Curry makes shots 10 feet away 67% of the time and 30 feet away only 45% of the time. The difference is that one of these shots is worth 2 points and one is worth 3. The extra point makes up for the loss in accuracy. After all, points are the ultimate currency in the NBA." 
+                "To show efficiency, we multiply a player's field goal percentage by the type of shot it is using distance, 2-pointer or 3-pointer. When you have a player as accurate as Steph Curry, shooting behind the three point line becomes efficient, much more than 2-pointers. Curry's top 6 points per shot distance come form behind 3-point line. In fact, Curry scores more per shot on average 30 feet from the basket than 10 feet. To someone unfamiliar with basketball, this might not make sense. Steph Curry makes shots 10 feet away 67% of the time and 30 feet away only 45% of the time. The difference is that one of these shots is worth 2 points and one is worth 3. The extra point makes up for the loss in accuracy. After all, points are the ultimate currency in the NBA." 
             ) ),
             mainPanel( 
                 plotOutput("plot4") 
@@ -388,7 +388,7 @@ server <- function(input, output) {
             geom_point() + 
             geom_smooth(method = "lm", se = FALSE) +
             labs(title = "Comparing Players' 3PM and Salary per Season",
-                 x = "Three Pointers Made",
+                 x = "3-Pointers Made",
                  y = "Salary")
     })
     

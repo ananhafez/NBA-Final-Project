@@ -1,0 +1,208 @@
+---
+title: "An Analysis of 3-Pointers in the NBA"
+author: "Anan Hafez"
+date: "12/13/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(shiny)
+library(gganimate)
+library(janitor)
+library(skimr)
+library(tidyr)
+library(stringr)
+library(httr)
+library(RCurl)
+library(lubridate)
+library(readxl)
+library(gt)
+library(reshape2)
+library(ggplot2)
+library(purrr)
+library(moderndive)
+library(fs)
+library(infer)
+library(googlesheets4)
+library(scales)
+library(TeachBayes)
+library(sf)
+library(dplyr)
+library(httr)
+library(transformr)
+library(ggridges)
+library(cowplot)
+library(broom)
+library(rstanarm)
+library(tidyverse)
+library(gifski)
+library(png)
+library(ggrepel)
+```
+
+## Abstract
+
+It's hard to imagine today's NBA without the 3-pointer or the growing number of shooters making their livings from it.Three-point field goals weren't introduced to the Association until 1980, but fast-forward three decades, and three-pointers have become a way of life. I've seen the NBA change massively since I was a little kid. Games that used end with with 80 or 90 points now regularly end with over 100, 110, and sometimes 120 points. In fact, there have already been a few games in the most recent season that have ended with 150+ points! Are the rise of 3-pointers to blame? In my Shiny App, I first examine the rise of threes as a proportion of NBA scoring. Threes have become such a common part of the the game because players today have developed their shot so well that they are most efficient from behind the arc. As a result, NBA teams have shifted their focus to threes, and some have built entire strategies around it. In 1980, the San Diego Clippers averaged 6 3-pointers a game. Their modern-day counterpart, the Houston Rockets, averaged over 45 3-pointers a game. Additionally, as players have improved their 3-point shooting, teams have compensated them very well. Teams nowadays understand if they can shoot 3-pointers they can consistenly outscore teams and win games, even with poor defense. After all, points are the ultimate currency in the NBA.
+
+```{r message=FALSE, warning=FALSE}
+nba_season_stats <- read.csv("Data/Seasons_stats_complete.csv") %>% 
+  filter(Year != "0") %>% 
+  filter(Tm != "TOT")
+
+dirty_curry_stats <- read.csv("Data/curry_shooting.csv") %>% 
+  select(shot_made_flag, shot_type, shot_distance)
+
+player_career_stats <- read.csv("Data/players.csv")
+
+dirty_player_salaries <- read.csv("Data/salaries_1985to2018.csv")
+
+
+player_salaries <- player_career_stats %>% 
+  left_join(dirty_player_salaries, by = c("X_id" = "player_id")) %>% 
+  select(name, season_start, salary, team) %>% 
+  filter(season_start != "NA")
+
+curry_stats <- dirty_curry_stats %>% 
+  group_by(shot_distance) %>% 
+  count(shot_made_flag) %>% 
+  mutate(shot_made_flag = as.logical(shot_made_flag)) %>%
+  # mutate(shot_made_flag = if_else(TRUE, "made", "missed")) %>% 
+  pivot_wider(names_from = shot_made_flag, values_from = n) %>% 
+  mutate_all(~replace(., is.na(.), 0)) 
+
+colnames(curry_stats)<- c("shot_distance","made","missed")
+
+curry_stats_2<- curry_stats %>% 
+  mutate(total = made + missed) %>% 
+  mutate(fgp = made/total) %>% 
+  mutate(efficiency = if_else(shot_distance < 22, fgp * 2, fgp * 3)) %>% 
+  filter(shot_distance %in% c(5:30))
+
+plot_1 <- nba_season_stats %>% 
+  group_by(Year) %>% 
+  summarize(total_shots = sum(FGA), total_3p = sum(X3PA)) %>% 
+  mutate(prop_3p = round((total_3p/total_shots), digits = 2)) %>% 
+  ggplot(aes(x = Year, y = prop_3p)) + geom_line() + 
+  labs(title = "How the 3-Point Shot grew in the NBA", 
+       x = "NBA Season", y = "Proportion of All Shots that were 3-Pointers") +
+  xlim(1950, 2020)
+
+points_over_time <- nba_season_stats %>% 
+  group_by(Year) %>% 
+  summarize(total_2points = sum(X2P * 2), 
+            total_3points = sum(X3P * 3), 
+            total_ft = sum(FT), 
+            total_points = (total_2points + total_3points + total_ft), 
+            prop_2points = total_2points/total_points, 
+            prop_3points = total_3points/total_points, 
+            prop_ft = total_ft/total_points) 
+
+plot_2 <- ggplot(points_over_time, aes(Year)) + 
+  geom_line(aes(y = prop_2points, color = "var0")) + 
+  geom_line(aes(y = prop_3points, colour = "var1")) + 
+  geom_line(aes(y = prop_ft, colour = "var2")) + 
+  ylim(0,1) + 
+  scale_colour_manual(labels = c("2-Pointers", "3-Pointers", "Free Throws"), values = c("red", "green", "blue")) + 
+  xlim(1950, 2020) + 
+  labs(title = "Sources of NBA Points Over Time", 
+       y = "Percentage of Total Points", x = "NBA Season") + 
+  theme(legend.title = element_blank()) 
+
+plot_3 <- ggplot(curry_stats_2, aes(shot_distance, fgp)) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE) +
+  ylim(0,1) + geom_vline(xintercept = 22, colour="#BB0000", alpha = 0.7) +
+  labs(title = "Steph Curry's Shot Accuracy by Distance",
+                   x = "Shot Distance",
+                   y = "Field Goal %",
+                   caption = "Data from 2015-2016 Season courtesy of NBA.com",
+                   subtitle = "Only Minor Drop-off after 3-Point Line (Red Line)")
+
+plot_4 <- ggplot(curry_stats_2, aes(shot_distance, efficiency)) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE) + 
+  geom_vline(xintercept = 22, colour="#BB0000", alpha = 0.7) +
+  geom_hline(yintercept = 1.35, alpha = 0.7) +
+  ylim(0,2) +
+  labs(title = "Steph Curry's Shot Efficiency by Distance",
+       x = "Shot Distance",
+       y = "Average Points per Shot",
+       caption = "Data from 2015-2016 Season courtesy of NBA.com",
+       subtitle = "Curry's top 6 Efficiencies are behind 3-Point Line (Red Line)")
+
+stats_and_salaries <- nba_season_stats %>% 
+    full_join(player_salaries, by = c("Player" = "name", "Year" = "season_start")) 
+
+salary_reg <- stats_and_salaries %>% 
+    filter(salary != "NA") %>% 
+    filter(Year >= 1990) %>% 
+    filter(Pos != "C") 
+```
+
+\newpage
+
+
+## Figure 1: More Shots from Distance
+
+```{r, fig.width=7, fig.height=2.5}
+plot_2
+```
+
+Prior to 1980, 3-pointers represented 0% of the scoring in the league as it was not yet introduced. After 1980, the three-point line took on an increasingly important role with a road bump in the mid-90s. In 2008, 3-pointers officially surpassed free throws as the second most important scoring method in the league; and it does not look like its prevalence is declining any time soon. In fact, if the trend persists, by 2030, 3-pointers will be the most common increment in a basketball game.
+
+## Figure 2: Shooting Efficiency
+
+```{r fig.width=6, fig.height=3}
+plot_4
+```
+
+To show efficiency, we multiply a player's field goal percentage by the type of shot it is using distance, 2-pointer or 3-pointer. When you have a player as accurate as Steph Curry, shooting behind the three point line becomes efficient, much more then 2-pointers. Curry's top 6 points per shot distance come form behind 3-point line. In fact, Curry scores more per shot on average 30 feet from the basket than 10 feet. To someone unfamiliar with basketball, this might not make sense. Steph Curry makes shots 10 feet away 67% of the time and 30 feet away only 45% of the time. The difference is that one of these shots is worth 2 points and one is worth 3. The extra point makes up for the loss in accuracy. From a coach's perspective, the best strategy would be to have Curry almost exclusively take 3-pointers.
+
+## Figure 3: Team Strategy
+
+```{r, fig.width=8, fig.height=4}
+nba_season_stats %>% 
+            filter(Year == 2019) %>% 
+            group_by(Tm, Year) %>% 
+            summarise(percent_3p = sum(X3P)/sum(X3PA), total_3p = sum(X3PA)) %>% 
+            ggplot(aes(x = total_3p, y = percent_3p, color = Tm)) + 
+            geom_point() +
+            geom_label_repel(aes(label = Tm),
+                             box.padding   = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50') +
+            ylim(0, 0.5) +
+            labs(y = "Three Point %",
+                 x = "Three Pointers Attempted over Season",
+                 title = "Skills vs. Usage") +
+            theme(legend.position='none')
+```
+
+The x-axis represents the number of threes attempted while the y-axis represents the proportion of those made in a season. A team, realistically, hopes to find itself in the top-right corner of the graph, which represents a high skill of shooting threes and fully utilizing the skill. The top-left corner represents a high accuracy (aka high skills) but the team has under-utilized the skill. The bottom-left corner represents the team's awareness of its low three-pointer accuracy and its decision not to shoot threes. The bottom-right corner is the worst case scenario, representing a team that is very bad at shooting threes, but somehow decides to heavily rely on it.
+
+In 1980, the league was led by the San Diego Clippers, with 543 attempts over the course of the season. Compare that to the most recent season in 2019 where the Houston Rockets, led by the analytics of Daryl Morey of MIT, shot a record 3721 threes! As shown before, Morey understands that if players can shoot with enough accuracy they can always outscore an opposing team. The Rockets have built their entire team and playstyle around this strategy. Despite being one the worst defensive teams in the league, the Rockets have consistenly maintained winning records and playoff runs because this strategy actually works. If the Rockets as a team were slightly more accurate, perhaps closer to 38% or 39% from three, they would likely end up NBA champions. All because of threes!
+
+## Figure 4: 3-Point Shooters Get Paid
+
+```{r, fig.width=8, fig.height=4}
+label_names <- salary_reg %>% 
+  filter(Year == 2017) %>% 
+  arrange(desc(X3P))
+
+salary_reg %>% 
+  filter(Year == 2017) %>% 
+  ggplot(aes(x = X3P, y = salary)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Comparing Players' 3PM and Salary",
+       subtitle = "2017 NBA Season",
+       x = "3-Pointers Made",
+       y = "Salary") +
+  geom_label_repel(aes(label = Player),
+                             box.padding   = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50', 
+                            data = head(label_names, 3))
+```
+
+As NBA teams have developed gameplay strategies to score more 3-pointers, players who excel from distance have been rewarded handsomely. Examining the relationship between salaries and 3-pointers, we find that for every three a player makes, they earn an extra $77,000 on average. Steph Curry, widely regarded as the greatest 3-point shooter of all time, led the league in 3-pointers made in the 2017 season (just like he led the year before and after). Then it is no coincidence that he was also the highest paid player league, earning a record $35 million. Of course, there are still players earning tens of millions of dollars in the NBA without having to become serious 3-point shooters. However, as the years go on, and team strategies shift, these players are becoming a rarer commodity in the NBA.
+
